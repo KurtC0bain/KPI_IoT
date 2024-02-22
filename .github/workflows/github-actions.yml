@@ -3,7 +3,7 @@ name: Docker Compose Build Check
 on:
   push:
     branches:
-      - features/lab1 # Adjust branch name as needed
+      - main # Adjust branch name as needed
 
 jobs:
   build:
