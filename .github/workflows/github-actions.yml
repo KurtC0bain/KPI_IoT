@@ -1,0 +1,23 @@
+name: Docker Build Check
+
+on:
+  push:
+    branches:
+      - features/lab1 # Adjust branch name as needed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build Docker image
+        run: docker build -t my-image .
+
+      - name: Test Docker image
+        run: docker run --rm my-image sh -c "echo Docker image is working!"
