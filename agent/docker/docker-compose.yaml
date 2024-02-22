@@ -1,5 +1,5 @@
-version: "3.3"
-name: "road-vision"
+version: "3.9"
+name: "road_vision"
 services:
   mqtt:
     image: eclipse-mosquitto
