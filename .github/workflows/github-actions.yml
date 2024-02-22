@@ -29,6 +29,7 @@ jobs:
           pip install paho-mqtt==1.6.1
           pip install marshmallow
           pip freeze > requirements.txt
+          cd ../
           docker compose -f agent/docker/docker-compose.yaml up --build -d
           docker compose -f agent/docker/docker-compose.yaml ps
           # Add any additional tests or commands here
