@@ -4,6 +4,7 @@ from datetime import datetime
 from domain.accelerometer import Accelerometer
 from domain.gps import Gps
 from domain.aggregated_data import AggregatedData
+#from parking
 import config
 
 
