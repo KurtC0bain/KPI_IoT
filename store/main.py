@@ -1,7 +1,10 @@
-import asyncio
 import json
-from typing import Set, Dict, List, Any
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body
+from datetime import datetime
+from typing import Set, Dict, List
+
+from fastapi import Depends
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, field_validator
 from sqlalchemy import (
     create_engine,
     MetaData,
@@ -12,10 +15,9 @@ from sqlalchemy import (
     Float,
     DateTime,
 )
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql import select
-from datetime import datetime
-from pydantic import BaseModel, field_validator
+
 from config import (
     POSTGRES_HOST,
     POSTGRES_PORT,
@@ -45,6 +47,21 @@ processed_agent_data = Table(
     Column("timestamp", DateTime),
 )
 SessionLocal = sessionmaker(bind=engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# Function to read data from the database
+def read_data(db: Session):
+    # Query data using the session
+    query_result = db.query(processed_agent_data).all()
+    return query_result
 
 
 # SQLAlchemy model
@@ -96,6 +113,19 @@ class ProcessedAgentData(BaseModel):
     agent_data: AgentData
 
 
+# Define a Pydantic model for response purposes
+class ProcessedAgentDataResponse(BaseModel):
+    id: int
+    road_state: str
+    user_id: int
+    x: float
+    y: float
+    z: float
+    latitude: float
+    longitude: float
+    timestamp: datetime
+
+
 # WebSocket subscriptions
 subscriptions: Dict[int, Set[WebSocket]] = {}
 
@@ -121,47 +151,69 @@ async def send_data_to_subscribers(user_id: int, data):
             await websocket.send_json(json.dumps(data))
 
 
-# FastAPI CRUDL endpoints
-
+# FastAPI CRUD endpoints
 
 @app.post("/processed_agent_data/")
-async def create_processed_agent_data(data: List[ProcessedAgentData]):
-    # Insert data to database
-    # Send data to subscribers
-    pass
+def create_processed_agent_data(data: ProcessedAgentData, db: Session = Depends(get_db)):
+    db_processed_agent_data = ProcessedAgentDataInDB(**data.dict())
+    db.add(db_processed_agent_data)
+    db.commit()
+    db.refresh(db_processed_agent_data)
+    return db_processed_agent_data
 
 
-@app.get(
-    "/processed_agent_data/{processed_agent_data_id}",
-    response_model=ProcessedAgentDataInDB,
-)
-def read_processed_agent_data(processed_agent_data_id: int):
-    # Get data by id
-    pass
+# Read
+@app.get("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataResponse)
+def read_processed_agent_data(processed_agent_data_id: int, db: Session = Depends(get_db)):
+    db_processed_agent_data = db.query(ProcessedAgentData).filter(
+        ProcessedAgentData.id == processed_agent_data_id).first()
+    if db_processed_agent_data is None:
+        raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
+    return db_processed_agent_data
 
 
-@app.get("/processed_agent_data/", response_model=list[ProcessedAgentDataInDB])
-def list_processed_agent_data():
-    # Get list of data
-    pass
+# List
+@app.get("/processed_agent_data/", response_model=List[ProcessedAgentDataResponse])
+def list_processed_agent_data(db: Session = Depends(get_db)):
+    # print("????????????????? GET REQUEST ???????????????????")
+    # db = next(get_db())
+    # try:
+    #     # Read data from the database
+    #     data = read_data(db)
+    #     print(data)
+    # finally:
+    #     # Close the session
+    #     db.close()
+
+    db_processed_agent_data = db.query(ProcessedAgentData).all()
+    return db_processed_agent_data
 
 
-@app.put(
-    "/processed_agent_data/{processed_agent_data_id}",
-    response_model=ProcessedAgentDataInDB,
-)
-def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAgentData):
-    # Update data
-    pass
+# Update
+@app.put("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataResponse)
+def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAgentData, db: Session = Depends(get_db)):
+    db_processed_agent_data = db.query(ProcessedAgentData).filter(
+        ProcessedAgentData.id == processed_agent_data_id).first()
+    if db_processed_agent_data is None:
+        raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
+    update_data = data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_processed_agent_data, key, value)
+    db.commit()
+    db.refresh(db_processed_agent_data)
+    return db_processed_agent_data
 
 
-@app.delete(
-    "/processed_agent_data/{processed_agent_data_id}",
-    response_model=ProcessedAgentDataInDB,
-)
-def delete_processed_agent_data(processed_agent_data_id: int):
-    # Delete by id
-    pass
+# Delete
+@app.delete("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataResponse)
+def delete_processed_agent_data(processed_agent_data_id: int, db: Session = Depends(get_db)):
+    db_processed_agent_data = db.query(ProcessedAgentData).filter(
+        ProcessedAgentData.id == processed_agent_data_id).first()
+    if db_processed_agent_data is None:
+        raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
+    db.delete(db_processed_agent_data)
+    db.commit()
+    return db_processed_agent_data
 
 
 if __name__ == "__main__":
