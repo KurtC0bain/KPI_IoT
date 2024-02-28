@@ -5,6 +5,8 @@ from typing import Set, Dict, List
 from fastapi import Depends
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, field_validator
+from sqlalchemy.ext.declarative import declarative_base
+
 from sqlalchemy import (
     create_engine,
     MetaData,
@@ -13,7 +15,7 @@ from sqlalchemy import (
     Integer,
     String,
     Float,
-    DateTime,
+    DateTime
 )
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -63,19 +65,20 @@ def read_data(db: Session):
     query_result = db.query(processed_agent_data).all()
     return query_result
 
-
+Base = declarative_base()
 # SQLAlchemy model
-class ProcessedAgentDataInDB(BaseModel):
-    id: int
-    road_state: str
-    user_id: int
-    x: float
-    y: float
-    z: float
-    latitude: float
-    longitude: float
-    timestamp: datetime
+class ProcessedAgentDataInDB(Base):
+    __tablename__ = 'processed_agent_data'
 
+    id = Column(Integer, primary_key=True, index=True)
+    road_state = Column(String)
+    user_id = Column(Integer)
+    x = Column(Float)
+    y = Column(Float)
+    z = Column(Float)
+    latitude = Column(Float)
+    longitude = Column(Float)
+    timestamp = Column(DateTime)
 
 # FastAPI models
 class AccelerometerData(BaseModel):
@@ -155,18 +158,33 @@ async def send_data_to_subscribers(user_id: int, data):
 
 @app.post("/processed_agent_data/")
 def create_processed_agent_data(data: ProcessedAgentData, db: Session = Depends(get_db)):
-    db_processed_agent_data = ProcessedAgentDataInDB(**data.dict())
+    # Extract data from the incoming request
+    agent_data = data.agent_data
+    road_state = data.road_state
+
+    # Create a new ProcessedAgentDataInDB object
+    db_processed_agent_data = ProcessedAgentDataInDB(
+        road_state=road_state,
+        user_id=agent_data.user_id,
+        x=agent_data.accelerometer.x,
+        y=agent_data.accelerometer.y,
+        z=agent_data.accelerometer.z,
+        latitude=agent_data.gps.latitude,
+        longitude=agent_data.gps.longitude,
+        timestamp=agent_data.timestamp,
+    )
+
+    # Add the new object to the database
     db.add(db_processed_agent_data)
     db.commit()
     db.refresh(db_processed_agent_data)
+
     return db_processed_agent_data
-
-
 # Read
 @app.get("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataResponse)
 def read_processed_agent_data(processed_agent_data_id: int, db: Session = Depends(get_db)):
-    db_processed_agent_data = db.query(ProcessedAgentData).filter(
-        ProcessedAgentData.id == processed_agent_data_id).first()
+    db_processed_agent_data = db.query(processed_agent_data).filter(
+        processed_agent_data.c.id == processed_agent_data_id).first()
     if db_processed_agent_data is None:
         raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
     return db_processed_agent_data
@@ -175,46 +193,49 @@ def read_processed_agent_data(processed_agent_data_id: int, db: Session = Depend
 # List
 @app.get("/processed_agent_data/", response_model=List[ProcessedAgentDataResponse])
 def list_processed_agent_data(db: Session = Depends(get_db)):
-    # print("????????????????? GET REQUEST ???????????????????")
-    # db = next(get_db())
-    # try:
-    #     # Read data from the database
-    #     data = read_data(db)
-    #     print(data)
-    # finally:
-    #     # Close the session
-    #     db.close()
-
-    db_processed_agent_data = db.query(ProcessedAgentData).all()
+    db_processed_agent_data = db.query(processed_agent_data).all()
     return db_processed_agent_data
 
 
 # Update
 @app.put("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataResponse)
 def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAgentData, db: Session = Depends(get_db)):
-    db_processed_agent_data = db.query(ProcessedAgentData).filter(
-        ProcessedAgentData.id == processed_agent_data_id).first()
+    db_processed_agent_data = db.query(processed_agent_data).filter(
+        processed_agent_data.c.id == processed_agent_data_id).first()
     if db_processed_agent_data is None:
         raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
-    update_data = data.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_processed_agent_data, key, value)
+# Create a new instance of the ORM class with updated values
+    updated_data = ProcessedAgentDataInDB(
+        id=db_processed_agent_data.id,
+        road_state=data.road_state,
+        user_id=data.agent_data.user_id,
+        x=data.agent_data.accelerometer.x,
+        y=data.agent_data.accelerometer.y,
+        z=data.agent_data.accelerometer.z,
+        latitude=data.agent_data.gps.latitude,
+        longitude=data.agent_data.gps.longitude,
+        timestamp=data.agent_data.timestamp,
+    )
+
+    # Merge the updated object into the session
+    db.merge(updated_data)
     db.commit()
-    db.refresh(db_processed_agent_data)
-    return db_processed_agent_data
 
+    return updated_data
 
+Base.metadata.create_all(bind=engine)
 # Delete
 @app.delete("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataResponse)
 def delete_processed_agent_data(processed_agent_data_id: int, db: Session = Depends(get_db)):
-    db_processed_agent_data = db.query(ProcessedAgentData).filter(
-        ProcessedAgentData.id == processed_agent_data_id).first()
+    db_processed_agent_data = db.query(ProcessedAgentDataInDB).filter(ProcessedAgentDataInDB.id == processed_agent_data_id).first()
     if db_processed_agent_data is None:
         raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
+    
+    # Instead of deleting the instance directly from the table,
+    # delete it from the session
     db.delete(db_processed_agent_data)
     db.commit()
     return db_processed_agent_data
-
 
 if __name__ == "__main__":
     import uvicorn
