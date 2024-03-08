@@ -5,8 +5,6 @@ from typing import Set, Dict, List
 from fastapi import Depends
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, field_validator
-from sqlalchemy.ext.declarative import declarative_base
-
 from sqlalchemy import (
     create_engine,
     MetaData,
@@ -17,6 +15,7 @@ from sqlalchemy import (
     Float,
     DateTime
 )
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 
@@ -65,7 +64,10 @@ def read_data(db: Session):
     query_result = db.query(processed_agent_data).all()
     return query_result
 
+
 Base = declarative_base()
+
+
 # SQLAlchemy model
 class ProcessedAgentDataInDB(Base):
     __tablename__ = 'processed_agent_data'
@@ -79,6 +81,7 @@ class ProcessedAgentDataInDB(Base):
     latitude = Column(Float)
     longitude = Column(Float)
     timestamp = Column(DateTime)
+
 
 # FastAPI models
 class AccelerometerData(BaseModel):
@@ -180,6 +183,8 @@ def create_processed_agent_data(data: ProcessedAgentData, db: Session = Depends(
     db.refresh(db_processed_agent_data)
 
     return db_processed_agent_data
+
+
 # Read
 @app.get("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataResponse)
 def read_processed_agent_data(processed_agent_data_id: int, db: Session = Depends(get_db)):
@@ -204,7 +209,7 @@ def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAge
         processed_agent_data.c.id == processed_agent_data_id).first()
     if db_processed_agent_data is None:
         raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
-# Create a new instance of the ORM class with updated values
+    # Create a new instance of the ORM class with updated values
     updated_data = ProcessedAgentDataInDB(
         id=db_processed_agent_data.id,
         road_state=data.road_state,
@@ -223,19 +228,24 @@ def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAge
 
     return updated_data
 
+
 Base.metadata.create_all(bind=engine)
+
+
 # Delete
 @app.delete("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataResponse)
 def delete_processed_agent_data(processed_agent_data_id: int, db: Session = Depends(get_db)):
-    db_processed_agent_data = db.query(ProcessedAgentDataInDB).filter(ProcessedAgentDataInDB.id == processed_agent_data_id).first()
+    db_processed_agent_data = db.query(ProcessedAgentDataInDB).filter(
+        ProcessedAgentDataInDB.id == processed_agent_data_id).first()
     if db_processed_agent_data is None:
         raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
-    
+
     # Instead of deleting the instance directly from the table,
     # delete it from the session
     db.delete(db_processed_agent_data)
     db.commit()
     return db_processed_agent_data
+
 
 if __name__ == "__main__":
     import uvicorn

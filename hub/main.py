@@ -1,9 +1,9 @@
 import logging
 from typing import List
 
+import paho.mqtt.client as mqtt
 from fastapi import FastAPI
 from redis import Redis
-import paho.mqtt.client as mqtt
 
 from app.adapters.store_api_adapter import StoreApiAdapter
 from app.entities.processed_agent_data import ProcessedAgentData

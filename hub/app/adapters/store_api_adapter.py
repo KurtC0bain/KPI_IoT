@@ -1,10 +1,6 @@
-import json
-import logging
 from typing import List
 
-import pydantic_core
 import requests
-
 from app.entities.processed_agent_data import ProcessedAgentData
 from app.interfaces.store_gateway import StoreGateway
 
@@ -14,11 +10,13 @@ class StoreApiAdapter(StoreGateway):
         self.api_base_url = api_base_url
 
     def save_data(self, processed_agent_data_batch: List[ProcessedAgentData]):
-        """
-        Save the processed road data to the Store API.
-        Parameters:
-            processed_agent_data_batch (dict): Processed road data to be saved.
-        Returns:
-            bool: True if the data is successfully saved, False otherwise.
-        """
-        # Implement it
+        url = f"{self.api_base_url}/processed_agent_data"
+        data = [agent_data.to_dict() for agent_data in processed_agent_data_batch]
+        headers = {'Content-Type': 'application/json'}
+
+        try:
+            response = requests.post(url, json=data, headers=headers)
+            response.raise_for_status()
+            print("Data saved successfully.")
+        except requests.exceptions.RequestException as e:
+            print(f"Error saving data: {e}")
