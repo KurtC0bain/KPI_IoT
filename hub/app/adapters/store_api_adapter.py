@@ -22,3 +22,21 @@ class StoreApiAdapter(StoreGateway):
             bool: True if the data is successfully saved, False otherwise.
         """
         # Implement it
+        try:
+            # Convert the processed agent data to JSON
+            data = [data.dict() for data in processed_agent_data_batch]
+
+            # Make a POST request to the Store API endpoint with the processed data
+            # response = requests.post(f"{self.api_base_url}/processed_agent_data", json=data)
+            response = requests.post(f"{self.api_base_url}/processed_agent_data", data=json.dumps(
+                    processed_agent_data_batch, default=pydantic_core.to_jsonable_python))
+
+            # Check if the request was successful (status code 200)
+            if response.status_code == 200:
+                return True
+            else:
+                return False
+        except Exception as e:
+            # Handle exceptions if any
+            print(f"Error saving data to Store API: {e}")
+            return False

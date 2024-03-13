@@ -52,7 +52,7 @@ async def save_processed_agent_data(processed_agent_data: ProcessedAgentData):
 
 
 # MQTT
-client = mqtt.Client()
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
 
 
 def on_connect(client, userdata, flags, rc):

@@ -1,22 +1,23 @@
 version: "3.9"
-name: "road_vision"
+# name: "road_vision"
 services:
   mqtt:
     image: eclipse-mosquitto
-    container_name: mqtt_edge
+    container_name: mqtt_docker
     volumes:
       - ./mosquitto:/mosquitto
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
     ports:
       - 1883:1883
-      - 9001:9001
+      - 19001:9001
     networks:
       mqtt_network:
 
+
   postgres_db:
     image: postgres:latest
-    container_name: postgres_db_edge
+    container_name: postgres_db_docker
     restart: always
     environment:
       POSTGRES_USER: user
@@ -25,36 +26,38 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/structure.sql:/docker-entrypoint-initdb.d/structure.sql
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"
     networks:
       db_network:
 
-  pgadmin:
-    container_name: pgadmin4_edge
-    image: dpage/pgadmin4
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: root
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    ports:
-      - "5050:80"
-    networks:
-      db_network:
+        # pgadmin:
+        #   container_name: pgadmin4
+        #   image: dpage/pgadmin4
+        #   restart: always
+        #   environment:
+        #     PGADMIN_DEFAULT_EMAIL: admin@admin.com
+        #     PGADMIN_DEFAULT_PASSWORD: root
+        #   volumes:
+        #     - pgadmin-data:/var/lib/pgadmin
+        #   ports:
+        #     - "5050:80"
+        #   networks:
+        #     db_network:
+
 
   redis:
     image: redis:latest
-    container_name: redis_edge
+    container_name: redis_docker
     ports:
       - "6379:6379"
     networks:
       hub_redis:
 
+
   store:
-    container_name: store_edge
-    build: ../../store
+    container_name: store_docker
+    build: ../store
     depends_on:
       - postgres_db
     restart: always
@@ -71,9 +74,10 @@ services:
       db_network:
       hub:
 
+
   edge:
-    container_name: edge_edge
-    build: ../../edge
+    container_name: edge_docker
+    build: ../edge
     depends_on:
       - mqtt
       - hub
@@ -90,9 +94,10 @@ services:
       mqtt_network:
       edge_hub:
 
+
   hub:
-    container_name: hub_edge
-    build: ../../hub
+    container_name: hub_docker
+    build: ../hub
     depends_on:
       - mqtt
       - redis
@@ -105,16 +110,18 @@ services:
       MQTT_BROKER_HOST: "mqtt"
       MQTT_BROKER_PORT: 1883
       MQTT_TOPIC: "processed_data_topic"
+      BATCH_SIZE: 1
     ports:
-      - "9000:8000"
+      - "19000:8000"
     networks:
       mqtt_network:
       hub_store:
       hub_redis:
 
+
   fake_agent:
-    container_name: agent_edge
-    build: ../../agent
+    container_name: agent_docker
+    build: ../agent
     depends_on:
       - mqtt
     environment:
@@ -122,8 +129,10 @@ services:
       MQTT_BROKER_PORT: 1883
       MQTT_TOPIC: "agent_data_topic"
       DELAY: 0.1
+      USER_ID: 1
     networks:
       mqtt_network:
+
 
 networks:
   mqtt_network:
@@ -132,6 +141,7 @@ networks:
   hub:
   hub_store:
   hub_redis:
+
 
 volumes:
   postgres_data:
