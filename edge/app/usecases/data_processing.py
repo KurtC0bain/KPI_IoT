@@ -1,6 +1,21 @@
 from app.entities.agent_data import AgentData
 from app.entities.processed_agent_data import ProcessedAgentData
 
+interval = {
+    "normal": {
+        "start": 14000, 
+        "end": 18000
+        },
+    "less": {
+        "start": 12000, 
+        "end": 14000
+        },
+    "greater": {
+        "start": 18000, 
+        "end": 20000
+        }
+}
+
 
 def process_agent_data(
     agent_data: AgentData,
@@ -16,9 +31,9 @@ def process_agent_data(
     # Assuming classification logic based on accelerometer z-axis value ranges
     z_acceleration = agent_data.accelerometer.z
 
-    if 14000 > z_acceleration < 18000:
+    if interval["normal"]["start"] > z_acceleration < interval["normal"]["end"]:
         road_state = "normal"
-    elif 12000 > z_acceleration < 14000 or 18000 > z_acceleration < 20000:
+    elif interval["less"]["start"] > z_acceleration < interval["less"]["end"] or interval["greater"]["start"] > z_acceleration < interval["greater"]["end"]:
         road_state = "small pits"
     else:
         road_state = "large pits"
