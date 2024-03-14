@@ -154,11 +154,16 @@ async def send_data_to_subscribers(user_id: int, data):
 
 # FastAPI CRUD endpoints
 
+def get_session():
+    with SessionLocal() as session:
+        yield session
+
+# Create
 @app.post("/processed_agent_data/")
-async def create_processed_agent_data(data: List[ProcessedAgentData]):
+async def create_processed_agent_data(data: List[ProcessedAgentData], session: Session = Depends(get_session)):
     if len(data) == 0:
         return
-    
+
     flatten_data = [
         {
             "road_state": p_agent_data.road_state,
@@ -172,44 +177,39 @@ async def create_processed_agent_data(data: List[ProcessedAgentData]):
         }
         for p_agent_data in data
     ]
-    
-    with SessionLocal() as session:
-        insert_query = processed_agent_data.insert().values(flatten_data)
-        session.execute(insert_query)
-        
-        user_id = data[0].agent_data.user_id
-        await send_data_to_subscribers(
-            user_id,
-            [{**d, "timestamp": d["timestamp"].isoformat()} for d in flatten_data],
-        )
+
+    insert_query = processed_agent_data.insert().values(flatten_data)
+    session.execute(insert_query)
+
+    user_id = data[0].agent_data.user_id
+    await send_data_to_subscribers(
+        user_id,
+        [{**d, "timestamp": d["timestamp"].isoformat()} for d in flatten_data],
+    )
 
 # Read
 @app.get("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataInDB)
-def read_processed_agent_data(processed_agent_data_id: int):
-    query = select(processed_agent_data).where(processed_agent_data.c.id == processed_agent_data_id)
-    
-    with SessionLocal() as session:
-        result = session.execute(query).fetchone()
-        
-        if result is None:
-            raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
-        
-        return result
+def read_processed_agent_data(processed_agent_data_id: int, session: Session = Depends(get_session)):
+    query = processed_agent_data.select().where(processed_agent_data.c.id == processed_agent_data_id)
 
+    result = session.execute(query).fetchone()
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
+
+    return result
 
 # List
-@app.get("/processed_agent_data/", response_model=list[ProcessedAgentDataInDB])
-def list_processed_agent_data():
-    query = select(processed_agent_data)
-    
-    with SessionLocal() as session:
-        results = session.execute(query).fetchall()
-        return results
+@app.get("/processed_agent_data/", response_model=List[ProcessedAgentDataInDB])
+def list_processed_agent_data(session: Session = Depends(get_session)):
+    query = processed_agent_data.select()
 
+    results = session.execute(query).fetchall()
+    return results
 
 # Update
 @app.put("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataInDB)
-def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAgentData):
+def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAgentData, session: Session = Depends(get_session)):
     agent_data = data.agent_data
     query = (
         processed_agent_data.update()
@@ -226,32 +226,31 @@ def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAge
         )
         .returning(processed_agent_data)
     )
-    
-    with SessionLocal() as session:
-        result = session.execute(query).fetchone()
-        
-        if result is None:
-            raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
-        
-        return result
+
+    result = session.execute(query).fetchone()
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
+
+    return result
 
 Base.metadata.create_all(bind=engine)
+
 # Delete
 @app.delete("/processed_agent_data/{processed_agent_data_id}", response_model=ProcessedAgentDataInDB)
-def delete_processed_agent_data(processed_agent_data_id: int):
+def delete_processed_agent_data(processed_agent_data_id: int, session: Session = Depends(get_session)):
     query = (
         processed_agent_data.delete()
         .where(processed_agent_data.c.id == processed_agent_data_id)
         .returning(processed_agent_data)
     )
-    
-    with SessionLocal() as session:
-        result = session.execute(query).fetchone()
-        
-        if result is None:
-            raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
-        
-        return result
+
+    result = session.execute(query).fetchone()
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
+
+    return result
 
 if __name__ == "__main__":
     import uvicorn
