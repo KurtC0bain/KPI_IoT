@@ -29,6 +29,7 @@ class MapViewApp(App):
         for point in points:
             print(point)
             self.map_layer.add_point(point)
+            
         self.update_car_marker(points[-1])
 
     def update_car_marker(self, point):
@@ -59,17 +60,11 @@ class MapViewApp(App):
         :return: мапа
         """
         self.map_layer = LineMapLayer()
-        self.map_view = MapView(
-            zoom=15,
-            lat=50.4501,
-            lon=30.5234,
-        )
+        self.map_view = MapView(zoom=15, lat=50.4501, lon=30.5234)
+
         self.map_view.add_layer(self.map_layer, mode="scatter")
-        self.car_marker = MapMarker(
-            lat=50.45034509664691,
-            lon=30.5246114730835,
-            source="images/car.png",
-        )
+        self.car_marker = MapMarker(lat=50.45034509664691, lon=30.5246114730835, source="images/car.png")
+
         self.map_view.add_marker(self.car_marker)
         return self.map_view
 
