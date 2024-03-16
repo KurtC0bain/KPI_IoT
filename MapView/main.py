@@ -14,16 +14,15 @@ class MapViewApp(App):
 
     def on_start(self):
         """
-        Встановлює необхідні маркери, викликає функцію для оновлення мапи
+        Встановлює початкові маркери та викликає функцію оновлення мапи
         """
         self.datasource = Datasource(1)
         Clock.schedule_interval(self.update, 1)
 
     def update(self, *args):
         """
-        Викликається регулярно для оновлення мапи
+        Оновлює мапу. Викликається регулярно
         """
-        # Logger.debug("Get new points")
         points = self.datasource.get_new_points()
         if len(points) == 0:
             return
@@ -34,7 +33,7 @@ class MapViewApp(App):
 
     def update_car_marker(self, point):
         """
-        Оновлює відображення маркера машини на мапі
+        Оновлює маркер машини на мапі
         :param point: GPS координати
         """
         self.map_view.remove_marker(self.car_marker)
@@ -56,8 +55,8 @@ class MapViewApp(App):
 
     def build(self):
         """
-        Ініціалізує мапу MapView(zoom, lat, lon)
-        :return: мапу
+        Створює мапу з параметрами MapView(zoom, lat, lon)
+        :return: мапа
         """
         self.map_layer = LineMapLayer()
         self.map_view = MapView(
