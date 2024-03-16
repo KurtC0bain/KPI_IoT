@@ -10,7 +10,6 @@ from lineMapLayer import LineMapLayer
 class MapViewApp(App):
     def __init__(self, **kwargs):
         super().__init__()
-        # додати необхідні змінні
 
     def on_start(self):
         """

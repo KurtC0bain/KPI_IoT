@@ -27,7 +27,6 @@ def process_agent_data(
     Returns:
         processed_data_batch (ProcessedAgentData): Processed data containing the classified state of the road surface and agent data.
     """
-    # Implement it
     # Assuming classification logic based on accelerometer z-axis value ranges
     z_acceleration = agent_data.accelerometer.z
 
