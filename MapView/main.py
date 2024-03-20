@@ -10,31 +10,30 @@ from lineMapLayer import LineMapLayer
 class MapViewApp(App):
     def __init__(self, **kwargs):
         super().__init__()
-        # додати необхідні змінні
 
     def on_start(self):
         """
-        Встановлює необхідні маркери, викликає функцію для оновлення мапи
+        Встановлює початкові маркери та викликає функцію оновлення мапи
         """
         self.datasource = Datasource(1)
         Clock.schedule_interval(self.update, 1)
 
     def update(self, *args):
         """
-        Викликається регулярно для оновлення мапи
+        Оновлює мапу. Викликається регулярно
         """
-        # Logger.debug("Get new points")
         points = self.datasource.get_new_points()
         if len(points) == 0:
             return
         for point in points:
             print(point)
             self.map_layer.add_point(point)
+            
         self.update_car_marker(points[-1])
 
     def update_car_marker(self, point):
         """
-        Оновлює відображення маркера машини на мапі
+        Оновлює маркер машини на мапі
         :param point: GPS координати
         """
         self.map_view.remove_marker(self.car_marker)
@@ -56,21 +55,15 @@ class MapViewApp(App):
 
     def build(self):
         """
-        Ініціалізує мапу MapView(zoom, lat, lon)
-        :return: мапу
+        Створює мапу з параметрами MapView(zoom, lat, lon)
+        :return: мапа
         """
         self.map_layer = LineMapLayer()
-        self.map_view = MapView(
-            zoom=15,
-            lat=50.4501,
-            lon=30.5234,
-        )
+        self.map_view = MapView(zoom=15, lat=50.4501, lon=30.5234)
+
         self.map_view.add_layer(self.map_layer, mode="scatter")
-        self.car_marker = MapMarker(
-            lat=50.45034509664691,
-            lon=30.5246114730835,
-            source="images/car.png",
-        )
+        self.car_marker = MapMarker(lat=50.45034509664691, lon=30.5246114730835, source="images/car.png")
+
         self.map_view.add_marker(self.car_marker)
         return self.map_view
 
